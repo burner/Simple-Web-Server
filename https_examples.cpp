@@ -21,7 +21,7 @@ int main() {
     //Add resources using regular expression for path, a method-string, and an anonymous function
     //POST-example for the path /string, responds the posted string
     //  If C++14: use 'auto' instead of 'shared_ptr<Server<HTTPS>::Request>'
-    server.resource["^/string/?$"]["POST"]=[](ostream& response, shared_ptr<Server<HTTPS>::Request> request) {
+    server.resource["^/string/?$"]["POST"]=[](ostream& response, shared_ptr<Request> request) {
         //Retrieve string from istream (*request.content)
         stringstream ss;
         request->content >> ss.rdbuf();
@@ -38,7 +38,7 @@ int main() {
     //  "lastName": "Smith",
     //  "age": 25
     //}
-    server.resource["^/json/?$"]["POST"]=[](ostream& response, shared_ptr<Server<HTTPS>::Request> request) {
+    server.resource["^/json/?$"]["POST"]=[](ostream& response, shared_ptr<Request> request) {
         try {
             ptree pt;
             read_json(request->content, pt);
@@ -54,7 +54,7 @@ int main() {
     
     //GET-example for the path /info
     //Responds with request-information
-    server.resource["^/info/?$"]["GET"]=[](ostream& response, shared_ptr<Server<HTTPS>::Request> request) {
+    server.resource["^/info/?$"]["GET"]=[](ostream& response, shared_ptr<Request> request) {
         stringstream content_stream;
         content_stream << "<h1>Request:</h1>";
         content_stream << request->method << " " << request->path << " HTTP/" << request->http_version << "<br>";
@@ -70,7 +70,7 @@ int main() {
     
     //GET-example for the path /match/[number], responds with the matched string in path (number)
     //For instance a request GET /match/123 will receive: 123
-    server.resource["^/match/([0-9]+)/?$"]["GET"]=[](ostream& response, shared_ptr<Server<HTTPS>::Request> request) {
+    server.resource["^/match/([0-9]+)/?$"]["GET"]=[](ostream& response, shared_ptr<Request> request) {
         string number=request->path_match[1];
         response << "HTTP/1.1 200 OK\r\nContent-Length: " << number.length() << "\r\n\r\n" << number;
     };
@@ -79,7 +79,7 @@ int main() {
     //Will respond with content in the web/-directory, and its subdirectories.
     //Default file: index.html
     //Can for instance be used to retrieve an HTML 5 client that uses REST-resources on this server
-    server.default_resource["^/?(.*)$"]["GET"]=[](ostream& response, shared_ptr<Server<HTTPS>::Request> request) {
+    server.default_resource["^/?(.*)$"]["GET"]=[](ostream& response, shared_ptr<Request> request) {
         string filename="web/";
         
         string path=request->path_match[1];

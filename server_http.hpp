@@ -7,30 +7,15 @@
 #include <unordered_map>
 #include <thread>
 
+#include "request.hpp"
+#include "request_parser.hpp"
+
 namespace SimpleWeb {
     template <class socket_type>
     class ServerBase {
     public:
-        class Request {
-            friend class ServerBase<socket_type>;
-        public:
-            std::string method, path, http_version;
-
-            std::istream content;
-
-            std::unordered_map<std::string, std::string> header;
-
-            std::smatch path_match;
-            
-        private:
-            Request(): content(&content_buffer) {}
-            
-            boost::asio::streambuf content_buffer;
-        };
-        
         typedef std::map<std::string, std::unordered_map<std::string, 
-                std::function<void(std::ostream&, std::shared_ptr<ServerBase<socket_type>::Request>)> > > resource_type;
-        
+                std::function<void(std::ostream&, std::shared_ptr<Request>)> > > resource_type;
         resource_type resource;
 
         resource_type default_resource;
@@ -79,13 +64,16 @@ namespace SimpleWeb {
         size_t timeout_request;
         size_t timeout_content;
 
+		std::function<void(std::shared_ptr<Request>, std::istream&)> request_parser;
+
         //All resources with default_resource at the end of vector
         //Created in start()
         std::vector<typename resource_type::iterator> all_resources;
         
         ServerBase(unsigned short port, size_t num_threads, size_t timeout_request, size_t timeout_send_or_receive) : 
                 endpoint(boost::asio::ip::tcp::v4(), port), acceptor(m_io_service, endpoint), num_threads(num_threads), 
-                timeout_request(timeout_request), timeout_content(timeout_send_or_receive) {}
+                timeout_request(timeout_request), timeout_content(timeout_send_or_receive), 
+				request_parser(&parser_handwritten) {}
         
         virtual void accept()=0;
         
@@ -122,7 +110,7 @@ namespace SimpleWeb {
                     //streambuf (maybe some bytes of the content) is appended to in the async_read-function below (for retrieving content).
                     size_t num_additional_bytes=request->content_buffer.size()-bytes_transferred;
                     
-                    parse_request(request, request->content);
+                    request_parser(request, request->content);
                     
                     //If content, read that as well
                     if(request->header.count("Content-Length")>0) {
@@ -146,35 +134,6 @@ namespace SimpleWeb {
                     }
                 }
             });
-        }
-
-        void parse_request(std::shared_ptr<Request> request, std::istream& stream) const {
-            std::regex e("^([^ ]*) ([^ ]*) HTTP/([^ ]*)$");
-
-            std::smatch sm;
-
-            //First parse request method, path, and HTTP-version from the first line
-            std::string line;
-            getline(stream, line);
-            line.pop_back();
-            if(std::regex_match(line, sm, e)) {        
-                request->method=sm[1];
-                request->path=sm[2];
-                request->http_version=sm[3];
-
-                bool matched;
-                e="^([^:]*): ?(.*)$";
-                //Parse the rest of the header
-                do {
-                    getline(stream, line);
-                    line.pop_back();
-                    matched=std::regex_match(line, sm, e);
-                    if(matched) {
-                        request->header[sm[1]]=sm[2];
-                    }
-
-                } while(matched==true);
-            }
         }
 
         void write_response(std::shared_ptr<socket_type> socket, std::shared_ptr<Request> request) {
