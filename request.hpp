@@ -3,6 +3,7 @@
 
 #include <boost/asio.hpp>
 #include <unordered_map>
+namespace SimpleWeb {
 
 class Request {
 public:
@@ -15,4 +16,5 @@ public:
     
     boost::asio::streambuf content_buffer;
 };
+}
 #endif

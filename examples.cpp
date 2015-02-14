@@ -7,27 +7,33 @@
 #include <boost/property_tree/json_parser.hpp>
 
 //Added for the default_resource example
-#include<fstream>
+#include <fstream>
 
-using namespace std;
 using namespace SimpleWeb;
 //Added for the json-example:
 using namespace boost::property_tree;
 
 int main() {
-    //HTTP-server at port 8080 using 4 threads
+
+	// HTTP Example
+
+    //HTTP-server at port 8080 using 3 threads
     Server<HTTP> server(8080, 3);
+
+	// HTTPS Example
+
+    //HTTPS-server at port 8080 using 3 threads
+    //Server<HTTPS> server(8080, 3, "server.crt", "server.key");
     
     //Add resources using regular expression for path, a method-string, and an anonymous function
     //POST-example for the path /string, responds the posted string
     //  If C++14: use 'auto' instead of 'shared_ptr<Server<HTTPS>::Request>'
-    //server.resource["^/string/?$"] = Callback(CallbackType::POST, [](ostream& response, shared_ptr<Request> request) {
 	server.resource_map.insert(std::make_pair("^/string?$", 
-    	Callback(CallbackType::POST, [](ostream& response, shared_ptr<Request> request) {
+    	Callback(CallbackType::POST, [](std::ostream& response, std::shared_ptr<Request> request) {
         	//Retrieve string from istream (*request.content)
-        	stringstream ss;
+			std::stringstream ss;
         	request->content >> ss.rdbuf();
-        	string content=ss.str();
+			std::string content=ss.str();
         	
         	response << "HTTP/1.1 200 OK\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
 		})
@@ -42,16 +48,16 @@ int main() {
     //  "age": 25
     //}
     server.resource_map.insert(std::make_pair("^/json/?$",
-	 	Callback(CallbackType::POST, [](ostream& response, shared_ptr<Request> request) {
+	 	Callback(CallbackType::POST, [](std::ostream& response, std::shared_ptr<Request> request) {
         	try {
         	    ptree pt;
         	    read_json(request->content, pt);
 
-        	    string name=pt.get<string>("firstName")+" "+pt.get<string>("lastName");
+				std::string name=pt.get<std::string>("firstName")+" "+pt.get<std::string>("lastName");
 
         	    response << "HTTP/1.1 200 OK\r\nContent-Length: " << name.length() << "\r\n\r\n" << name;
         	}
-        	catch(exception& e) {
+        	catch(std::exception& e) {
         	    response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n" << e.what();
         	}
 		})
@@ -60,8 +66,8 @@ int main() {
     //GET-example for the path /info
     //Responds with request-information
     server.resource_map.insert(std::make_pair("^/info/?$", 
-		Callback(CallbackType::GET, [](ostream& response, shared_ptr<Request> request) {
-        	stringstream content_stream;
+		Callback(CallbackType::GET, [](std::ostream& response, std::shared_ptr<Request> request) {
+			std::stringstream content_stream;
         	content_stream << "<h1>Request:</h1>";
         	content_stream << request->method << " " << request->path << " HTTP/" << request->http_version << "<br>";
         	for(auto& header: request->header) {
@@ -69,7 +75,7 @@ int main() {
         	}
         	
         	//find length of content_stream (length received using content_stream.tellp())
-        	content_stream.seekp(0, ios::end);
+        	content_stream.seekp(0, std::ios::end);
         	
         	response <<  "HTTP/1.1 200 OK\r\nContent-Length: " << content_stream.tellp() << "\r\n\r\n" << content_stream.rdbuf();
 		})
@@ -77,10 +83,12 @@ int main() {
     
     //GET-example for the path /match/[number], responds with the matched string in path (number)
     //For instance a request GET /match/123 will receive: 123
+	//This uses the resource_vec. The Callback will be used when the request
+	//path begins with the passed path. No regex match is allowed.
     server.resource_vec.push_back(std::make_pair("/match", 
-		Callback(CallbackType::GET, [](ostream& response, shared_ptr<Request> request) {
+		Callback(CallbackType::GET, [](std::ostream& response, std::shared_ptr<Request> request) {
         	//string number=request->path_match[1];
-        	string number=request->path.substr(7);
+			std::string number=request->path.substr(7);
         	response << "HTTP/1.1 200 OK\r\nContent-Length: " << number.length() << "\r\n\r\n" << number;
 		})
     ));
@@ -89,15 +97,17 @@ int main() {
     //Will respond with content in the web/-directory, and its subdirectories.
     //Default file: index.html
     //Can for instance be used to retrieve an HTML 5 client that uses REST-resources on this server
-    //server.default_resource.insert(std::make_pair("^/?(.*)$", 
+	//It is important to set the callback type as it is INVALID by default
+	//which leads to the callback not being executed. No regex match is
+	//allowed. There are two default callbacks, one for POST and one for GET.
+	//The default callbacks match every path, only the method is important.
 	server.default_resource.type = CallbackType::GET;
     server.default_resource.functions[static_cast<size_t>(CallbackType::GET)] = 
-		[](ostream& response, shared_ptr<Request> request) 
+		[](std::ostream& response, std::shared_ptr<Request> request) 
 	{
-   		string filename="web/";
+		std::string filename="web/";
    		
-   		//string path=request->path_match[1];
-   		string path;
+		std::string path;
 		if(!request->path.empty() && request->path[0] == '/') {
 			path = request->path.substr(1);
 		} else {
@@ -106,57 +116,71 @@ int main() {
    		
    		//Replace all ".." with "." (so we can't leave the web-directory)
    		size_t pos;
-   		while((pos=path.find(".."))!=string::npos) {
+   		while((pos=path.find(".."))!=std::string::npos) {
    		    path.erase(pos, 1);
    		}
    		
    		filename+=path;
-   		ifstream ifs;
+		std::ifstream ifs;
    		//A simple platform-independent file-or-directory check do not exist, but this works in most of the cases:
-   		if(filename.find('.')==string::npos) {
+   		if(filename.find('.')==std::string::npos) {
    		    if(filename[filename.length()-1]!='/')
    		        filename+='/';
    		    filename+="index.html";
    		}
-   		ifs.open(filename, ifstream::in);
+   		ifs.open(filename, std::ifstream::in);
    		
    		if(ifs) {
-   		    ifs.seekg(0, ios::end);
+   		    ifs.seekg(0, std::ios::end);
    		    size_t length=ifs.tellg();
    		    
-   		    ifs.seekg(0, ios::beg);
+   		    ifs.seekg(0, std::ios::beg);
 
    		    //The file-content is copied to the response-stream. Should not be used for very large files.
    		    response << "HTTP/1.1 200 OK\r\nContent-Length: " << length << "\r\n\r\n" << ifs.rdbuf();
 
    		    ifs.close();
    		} else {
-   		    string content="Could not open file "+filename;
+			std::string content="Could not open file "+filename;
    		    response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
    		}
    	};
     
-    thread server_thread([&server](){
+	std::thread server_thread([&server](){
         //Start server
         server.start();
     });
     
     //Wait for server to start so that the client can connect
-    this_thread::sleep_for(chrono::seconds(1));
+	std::this_thread::sleep_for(std::chrono::seconds(1));
     
     //Client examples
     Client<HTTP> client("localhost:8080");
     auto r1=client.request("GET", "/match/123");
-    cout << r1->content.rdbuf() << endl;
+	std::cout << r1->content.rdbuf() << std::endl;
 
-    string json="{\"firstName\": \"John\",\"lastName\": \"Smith\",\"age\": 25}";
-    stringstream ss(json);    
+	std::string json="{\"firstName\": \"John\",\"lastName\": \"Smith\",\"age\": 25}";
+	std::stringstream ss(json); 
     auto r2=client.request("POST", "/string", ss);
-    cout << r2->content.rdbuf() << endl;
+	std::cout << r2->content.rdbuf() << std::endl;
     
     ss.str(json);
     auto r3=client.request("POST", "/json", ss);
-    cout << r3->content.rdbuf() << endl;
+	std::cout << r3->content.rdbuf() << std::endl;
+
+	/* https client example
+    Client<HTTPS> clients("localhost:8080", false);
+    auto r1s=client.request("GET", "/match/123");
+	std::cout << r1s->content.rdbuf() << std::endl;
+
+	std::stringstream ss2(json); 
+    auto r2s=client.request("POST", "/string", ss2);
+	std::cout << r2s->content.rdbuf() << std::endl;
+    
+    ss2.str(json);
+    auto r3s=client.request("POST", "/json", ss2);
+	std::cout << r3s->content.rdbuf() << std::endl;
+	*/
     
     server_thread.join();
     

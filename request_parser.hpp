@@ -5,6 +5,7 @@
 
 #include "request.hpp"
 
+namespace SimpleWeb {
 class Request;
 
 inline void parser_regex(std::shared_ptr<Request> request, std::istream& stream) {
@@ -78,5 +79,5 @@ inline void parser_handwritten(std::shared_ptr<Request> request, std::istream& s
 
     } while(matched);
 }
-
+}
 #endif
