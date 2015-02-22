@@ -22,11 +22,11 @@ namespace SimpleWeb {
             std::istream content;
 
             std::unordered_map<std::string, std::string> header;
+            Response(): content(&content_buffer) {};
             
         private:
             boost::asio::streambuf content_buffer;
             
-            Response(): content(&content_buffer) {};
         };
     
         std::shared_ptr<Response> request(const std::string& request_type, const std::string& path="/", 
@@ -42,7 +42,7 @@ namespace SimpleWeb {
                 corrected_path="/";
             
             content.seekp(0, std::ios::end);
-            size_t content_length=content.tellp();
+            long content_length = content.tellp();
             content.seekp(0, std::ios::beg);
             
             boost::asio::streambuf write_buffer;
@@ -58,16 +58,17 @@ namespace SimpleWeb {
             if(content_length>0)
                 write_stream << content.rdbuf();
             
-            std::shared_ptr<Response> response(new Response());
+            //std::shared_ptr<Response> response(new Response());
+            auto response(std::make_shared<Response>());
             
             try {
                 connect();
                 
                 boost::asio::write(*socket, write_buffer);
 
-                size_t bytes_transferred = boost::asio::read_until(*socket, response->content_buffer, "\r\n\r\n");
+                auto bytes_transferred = boost::asio::read_until(*socket, response->content_buffer, "\r\n\r\n");
 
-                size_t num_additional_bytes=response->content_buffer.size()-bytes_transferred;
+                size_t num_additional_bytes = response->content_buffer.size()-bytes_transferred;
 
                 parse_response_header(response, response->content);
                                 
@@ -77,28 +78,28 @@ namespace SimpleWeb {
                 }
                 else if(response->header.count("Transfer-Encoding")>0 && response->header["Transfer-Encoding"]=="chunked") {
                     boost::asio::streambuf streambuf;
-                    std::ostream content(&streambuf);
+                    std::ostream contentLocal(&streambuf);
                     
                     size_t length;
                     std::string buffer;
                     do {
-                        size_t bytes_transferred = boost::asio::read_until(*socket, response->content_buffer, "\r\n");
+                        auto bytes_transferredLocal = boost::asio::read_until(*socket, response->content_buffer, "\r\n");
                         std::string line;
                         getline(response->content, line);
-                        bytes_transferred-=line.size()+1;
+                        bytes_transferredLocal -= line.size()+1;
                         line.pop_back();
                         length=stoull(line, 0, 16);
 
-                        size_t num_additional_bytes=response->content_buffer.size()-bytes_transferred;
+                        size_t num_additional_bytes = response->content_buffer.size()-bytes_transferredLocal;
                     
-                        if((2+length)>num_additional_bytes) {
+                        if((2+length) > num_additional_bytes) {
                             boost::asio::read(*socket, response->content_buffer, 
                                 boost::asio::transfer_exactly(2+length-num_additional_bytes));
                         }
                                                 
                         buffer.resize(length);
                         response->content.read(&buffer[0], length);
-                        content.write(&buffer[0], length);
+                        contentLocal.write(&buffer[0], length);
 
                         //Remove "\r\n"
                         response->content.get();
@@ -106,7 +107,7 @@ namespace SimpleWeb {
                     } while(length>0);
                     
                     std::ostream response_content_output_stream(&response->content_buffer);
-                    response_content_output_stream << content.rdbuf();
+                    response_content_output_stream << contentLocal.rdbuf();
                 }
             }
             catch(const std::exception& e) {
