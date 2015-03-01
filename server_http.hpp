@@ -271,10 +271,10 @@ namespace SimpleWeb {
     template<>
     class Server<HTTP> : public ServerBase<HTTP> {
     public:
-        Server(unsigned short port, size_t num_threads = 1, 
-			size_t timeout_request = 5, size_t timeout_content = 300) : 
-            ServerBase<HTTP>::ServerBase(port, num_threads, timeout_request,
-			timeout_content) {};
+        Server(unsigned short portPara, size_t num_threadsPara = 1, 
+			size_t timeout_requestPara = 5, size_t timeout_contentPara = 300) : 
+            ServerBase<HTTP>::ServerBase(portPara, num_threadsPara, timeout_requestPara,
+			timeout_contentPara) {};
         
     private:
         void accept() {
