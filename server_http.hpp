@@ -51,7 +51,7 @@ namespace SimpleWeb {
         ResourceVec resource_vec;
         Callback default_resource;
         
-        void start() {
+        inline void start() {
             all_resources.clear();
             for(auto it = resource_map.begin(); it != resource_map.end(); 
 					++it) 
@@ -78,9 +78,13 @@ namespace SimpleWeb {
             }
         }
         
-        void stop() {
+        inline void stop() {
             m_io_service.stop();
         }
+
+		inline boost::asio::io_service& getIoService() {
+			return this->m_io_service;
+		}
 
     protected:
         boost::asio::io_service m_io_service;
@@ -98,7 +102,7 @@ namespace SimpleWeb {
         //Created in start()
         std::vector<typename ResourceMap::iterator> all_resources;
         
-        ServerBase(unsigned short port, size_t num_th, size_t timeout_req, 
+        inline ServerBase(unsigned short port, size_t num_th, size_t timeout_req, 
 				size_t timeout) : endpoint(boost::asio::ip::tcp::v4(), port), 
 				acceptor(m_io_service, endpoint), num_threads(num_th), 
                 timeout_request(timeout_req), timeout_content(timeout), 
@@ -107,7 +111,7 @@ namespace SimpleWeb {
         
         virtual void accept() = 0;
         
-        std::shared_ptr<boost::asio::deadline_timer> set_timeout_on_socket(
+        inline std::shared_ptr<boost::asio::deadline_timer> set_timeout_on_socket(
 				std::shared_ptr<socket_type> socket, long seconds) 
 		{
             auto timer(std::make_shared<boost::asio::deadline_timer>(m_io_service));
@@ -124,7 +128,7 @@ namespace SimpleWeb {
             return timer;
         }
         
-        void read_request_and_content(std::shared_ptr<socket_type> socket) {
+        inline void read_request_and_content(std::shared_ptr<socket_type> socket) {
             //Create new streambuf (Request::streambuf) for async_read_until()
             //shared_ptr is used to pass temporary objects to the asynchronous functions
 			auto request(std::make_shared<Request>());
@@ -218,7 +222,7 @@ namespace SimpleWeb {
         	});
 		}
 
-        void write_response(std::shared_ptr<socket_type> socket,
+        inline void write_response(std::shared_ptr<socket_type> socket,
 		   	std::shared_ptr<Request> request) 
 		{
             //Find path- and method-match, and generate response
@@ -271,13 +275,13 @@ namespace SimpleWeb {
     template<>
     class Server<HTTP> : public ServerBase<HTTP> {
     public:
-        Server(unsigned short portPara, size_t num_threadsPara = 1, 
+        inline Server(unsigned short portPara, size_t num_threadsPara = 1, 
 			size_t timeout_requestPara = 5, size_t timeout_contentPara = 300) : 
             ServerBase<HTTP>::ServerBase(portPara, num_threadsPara, timeout_requestPara,
 			timeout_contentPara) {};
         
     private:
-        void accept() {
+        inline void accept() {
             //Create new socket for this connection
             //Shared_ptr is used to pass temporary objects to the asynchronous functions
             auto socket(std::make_shared<HTTP>(m_io_service));
