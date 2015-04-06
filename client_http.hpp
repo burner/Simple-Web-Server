@@ -90,16 +90,22 @@ namespace SimpleWeb {
                         line.pop_back();
                         length=stoull(line, 0, 16);
 
-                        size_t num_additional_bytes = response->content_buffer.size()-bytes_transferredLocal;
+                        size_t num_additional_bytesLocal = response->content_buffer.size()-bytes_transferredLocal;
                     
-                        if((2+length) > num_additional_bytes) {
+                        if((2+length) > num_additional_bytesLocal) {
                             boost::asio::read(*socket, response->content_buffer, 
-                                boost::asio::transfer_exactly(2+length-num_additional_bytes));
+                                boost::asio::transfer_exactly(
+									2+length-num_additional_bytesLocal)
+								);
                         }
                                                 
-                        buffer.resize(length);
-                        response->content.read(&buffer[0], length);
-                        contentLocal.write(&buffer[0], length);
+                        buffer.resize(static_cast<size_t>(length));
+                        response->content.read(&buffer[0], 
+							static_cast<std::streamsize>(length)
+						);
+                        contentLocal.write(&buffer[0], 
+							static_cast<std::streamsize>(length)
+						);
 
                         //Remove "\r\n"
                         response->content.get();
@@ -139,7 +145,7 @@ namespace SimpleWeb {
                 host=sm[1];
                 port=default_port;
                 if(sm[2]!="")
-                    port=(unsigned short)std::stoul(sm[2]);
+                    port=static_cast<unsigned short>(std::stoul(sm[2]));
                 asio_endpoint=boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port);
             }
             else {
