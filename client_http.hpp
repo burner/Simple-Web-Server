@@ -199,7 +199,9 @@ namespace SimpleWeb {
     private:
         void connect() {
             if(socket_error || !socket->is_open()) {
-                boost::asio::ip::tcp::resolver::query query(host, std::to_string(port));
+                boost::asio::ip::tcp::resolver::query query(host, 
+					std::to_string(static_cast<int>(port))
+				);
                 boost::asio::connect(*socket, asio_resolver.resolve(query));
                 socket_error=false;
             }
